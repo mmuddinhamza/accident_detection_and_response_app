@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Dashboard - Accident Alert System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #28a745;
+            padding: 10px 20px;
+            color: white;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .alert-card {
+            width: 100%;
+            max-width: 600px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .alert-card h2 {
+            background-color: #28a745;
+            color: white;
+            padding: 10px;
+            margin: 0;
+            text-align: center;
+        }
+        .alert-card .content {
+            padding: 15px;
+        }
+        .alert-card p {
+            margin: 5px 0;
+        }
+        .alert-card .map-section {
+            height: 200px;
+            background-color: #e0e0e0;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Hospital Dashboard</h1>
+    <h2>Yashoda Hospital - Accident Alerts</h2>
+    
+</header>
+
+<div class="container" id="alerts-container">
+    <!-- Dynamic accident alerts will appear here -->
+</div>
+
+<!-- Include Google Maps API -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAyb_ybHoPXDc3xrNAIb3R3Qn6SbprRHfY&callback=initMap"></script>
+
+<script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+<script>
+    const hospitalId = 3; // Injected hospital ID
+    const socket = io('http://localhost:5001'); // Update to match your WebSocket server
+
+    // Initialize maps for each alert
+    const maps = {};
+
+    socket.on('accident-alert', (data) => {
+        // Check if the alert is relevant for the hospital
+        if (data.hospital_ids && !data.hospital_ids.includes(hospitalId)) {
+            console.log("Alert not relevant for this hospital.");
+            return;
+        }
+
+        const alertsContainer = document.getElementById('alerts-container');
+
+        // Create a new alert card
+        const alertCard = document.createElement('div');
+        alertCard.className = 'alert-card';
+        alertCard.innerHTML = `
+            <h2>Accident Alert</h2>
+            <div class="content">
+                <p><strong>Location:</strong> ${data.address || 'Unknown'}</p>
+                <p><strong>Latitude:</strong> ${data.latitude}</p>
+                <p><strong>Longitude:</strong> ${data.longitude}</p>
+                <p><strong>Intensity:</strong> ${data.intensity}</p>
+                <div class="map-section" id="map-${data.latitude}-${data.longitude}"></div>
+                <button onclick="prepareForEmergency()">Prepare for Emergency</button>
+            </div>
+        `;
+
+        alertsContainer.prepend(alertCard);
+
+        // Initialize the map for this alert
+        const mapId = `map-${data.latitude}-${data.longitude}`;
+        const newLocation = { lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) };
+        maps[mapId] = new google.maps.Map(document.getElementById(mapId), {
+            zoom: 12,
+            center: newLocation,
+        });
+
+        // Add a marker to the map
+        new google.maps.Marker({
+            position: newLocation,
+            map: maps[mapId],
+            title: 'Accident Location',
+        });
+    });
+
+    // Placeholder function for emergency response
+    function prepareForEmergency() {
+        alert('Emergency response team notified!');
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+</head>
+<body>
+    <h1>Register</h1>
+    <form id="registrationForm">
+        <label for="type">User Type:</label><br>
+        <select id="type" name="type">
+            <option value="user">User</option>
+            <option value="hospital">Hospital</option>
+            <option value="fire_department">Fire Department</option>
+        </select><br><br>
+
+        <label for="name">Name:</label><br>
+        <input type="text" id="name" name="name"><br><br>
+
+        <label for="email">Email:</label><br>
+        <input type="email" id="email" name="email"><br><br>
+
+        <label for="phone_number">Phone Number:</label><br>
+        <input type="text" id="phone_number" name="phone_number"><br><br>
+
+        <label for="password">Password (for Hospital/Fire Dept):</label><br>
+        <input type="password" id="password" name="password"><br><br>
+
+        <label for="latitude">Latitude (for Hospital/Fire Dept):</label><br>
+        <input type="text" id="latitude" name="latitude"><br><br>
+
+        <label for="longitude">Longitude (for Hospital/Fire Dept):</label><br>
+        <input type="text" id="longitude" name="longitude"><br><br>
+
+        <label for="emergency_contacts">Emergency Contacts (for User, comma-separated numbers):</label><br>
+        <input type="text" id="emergency_contacts" name="emergency_contacts"><br><br>
+
+        <button type="submit">Register</button>
+    </form>
+
+    <div id="response"></div>
+
+    <script>
+        document.getElementById('registrationForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const userType = document.getElementById('type').value;
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phoneNumber = document.getElementById('phone_number').value;
+            const password = document.getElementById('password').value;
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            const emergencyContactsInput = document.getElementById('emergency_contacts').value;
+
+            let payload = {
+                type: userType,
+                name: name,
+                email: email,
+                phone_number: phoneNumber
+            };
+
+            if (userType === 'user') {
+                // Split emergency contacts by comma and trim whitespace
+                payload.emergency_contacts = emergencyContactsInput.split(',').map(contact => contact.trim()).filter(contact => contact !== '');
+            } else { // Hospital or Fire Department
+                payload.password = password;
+                payload.latitude = parseFloat(latitude); // Ensure it's a number
+                payload.longitude = parseFloat(longitude); // Ensure it's a number
+            }
+
+            fetch('http://127.0.0.1:5001/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('response').innerText = JSON.stringify(data, null, 2);
+                if (data.status === 'success' && data.redirect) {
+                    alert(data.message + ". Redirecting to login.");
+                    // In a real app, you'd probably redirect the user here
+                    // window.location.href = '/login'; // Or to a dedicated login page
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('response').innerText = 'Error: ' + error.message;
+            });
+        });
+    </script>
+</body>
+</html>

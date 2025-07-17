@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration - Accident Alert System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #28a745;
+        }
+        form {
+            max-width: 500px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea, button {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .hidden {
+            display: none;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Register</h1>
+    <form id="registrationForm">
+        <label for="type">Register As:</label>
+        <select id="type" name="type" required>
+            <option value="user">User</option>
+            <option value="hospital">Hospital</option>
+            <option value="fire_department">Fire Department</option>
+        </select>
+
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" placeholder="Enter your name" required>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+
+        <label for="phone_number">Phone Number:</label>
+        <input type="text" id="phone_number" name="phone_number" placeholder="Enter your phone number" required>
+
+        <div id="orgSpecificFields" class="hidden">
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" placeholder="Set a password" autocomplete="new-password">
+
+            <label for="latitude">Latitude:</label>
+            <input type="text" id="latitude" name="latitude" placeholder="e.g., 17.3850">
+
+            <label for="longitude">Longitude:</label>
+            <input type="text" id="longitude" name="longitude" placeholder="e.g., 78.4867">
+        </div>
+
+        <div id="emergencyContactsFields">
+            <label for="emergency_contacts">Emergency Contacts (comma-separated phone numbers):</label>
+            <textarea id="emergency_contacts" name="emergency_contacts" placeholder="e.g., +919876543210, +911234567890"></textarea>
+        </div>
+
+        <button type="submit">Register</button>
+        <div id="errorMessage" class="error">Registration failed. Please try again.</div>
+    </form>
+
+    <script>
+        const typeSelect = document.getElementById('type');
+        const emergencyContactsFields = document.getElementById('emergencyContactsFields');
+        const orgSpecificFields = document.getElementById('orgSpecificFields'); // New
+        const errorMessage = document.getElementById('errorMessage');
+        const passwordInput = document.getElementById('password');
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
+        const emergencyContactsInput = document.getElementById('emergency_contacts');
+
+
+        // Function to update field visibility and requirements
+        const updateFormFields = () => {
+            const selectedType = typeSelect.value;
+
+            // Hide all optional fields initially
+            emergencyContactsFields.classList.add('hidden');
+            orgSpecificFields.classList.add('hidden');
+
+            // Reset required attributes
+            passwordInput.removeAttribute('required');
+            latitudeInput.removeAttribute('required');
+            longitudeInput.removeAttribute('required');
+            emergencyContactsInput.removeAttribute('required');
+
+            // Show/hide based on type and set required
+            if (selectedType === 'user') {
+                emergencyContactsFields.classList.remove('hidden');
+                emergencyContactsInput.setAttribute('required', 'required'); // Make required for user
+            } else { // Hospital or Fire Department
+                orgSpecificFields.classList.remove('hidden');
+                passwordInput.setAttribute('required', 'required');
+                latitudeInput.setAttribute('required', 'required');
+                longitudeInput.setAttribute('required', 'required');
+            }
+        };
+
+        // Initial call to set correct state on page load
+        updateFormFields();
+
+        // Event listener for type change
+        typeSelect.addEventListener('change', updateFormFields);
+
+        // Submit registration form
+        document.getElementById('registrationForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData.entries());
+            errorMessage.style.display = 'none'; // Hide error message
+
+            // Process data based on type
+            if (data.type === 'user') {
+                // Ensure emergency_contacts is an array of strings, trimming whitespace
+                data.emergency_contacts = data.emergency_contacts.split(',').map(contact => contact.trim()).filter(contact => contact !== '');
+                // Remove org-specific data if user
+                delete data.password;
+                delete data.latitude;
+                delete data.longitude;
+            } else { // Hospital or Fire Department
+                // Convert latitude and longitude to numbers
+                data.latitude = parseFloat(data.latitude);
+                data.longitude = parseFloat(data.longitude);
+                // Remove user-specific data if organization
+                delete data.emergency_contacts;
+            }
+
+            try {
+                const response = await fetch('http://127.0.0.1:5001/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message || 'Registration Successful');
+                    if (result.redirect) {
+                        window.location.href = result.redirect; // Redirect to login.html
+                    }
+                } else {
+                    // Check if result.message exists, otherwise provide a generic error
+                    throw new Error(result.message || 'Registration failed.');
+                }
+            } catch (err) {
+                console.error('Error during registration:', err);
+                errorMessage.textContent = err.message || 'Registration failed. Please try again later.';
+                errorMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

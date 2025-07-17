@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Dashboard - Accident Alert System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Optional: Google Fonts - Inter for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles to ensure Inter font is applied and for specific map section appearance */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .map-section {
+            /* Tailwind's bg-gray-200 is used, this ensures map takes full height */
+            height: 200px; /* Fixed height for map */
+            background-color: #e0e0e0; /* Fallback/placeholder color */
+            border-radius: 0.5rem; /* Rounded corners for map section */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- Header Section -->
+    <header class="bg-green-600 p-4 text-white text-center shadow-md">
+        <h1 class="text-3xl font-bold mb-1">Hospital Dashboard</h1>
+        <h2 class="text-xl font-medium">NIMS Hospital - Accident Alerts</h2>
+    </header>
+
+    <!-- Main Content Container for Alerts -->
+    <main class="container mx-auto p-4 flex flex-col items-center flex-grow">
+        <div id="alerts-container" class="w-full max-w-2xl">
+            <!-- Dynamic accident alerts will appear here -->
+            <p class="text-gray-600 text-center mt-8 text-lg" id="no-alerts-message">
+                No active accident alerts.
+            </p>
+        </div>
+    </main>
+
+    <!-- Google Maps API Script -->
+    <!-- Replace 'YOUR_NEW_GOOGLE_MAPS_API_KEY_HERE' with your actual API key -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAyb_ybHoPXDc3xrNAIb3R3Qn6SbprRHfY&callback=initMap"></script>
+
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+
+    <script>
+        // Injected hospital ID from Flask backend
+        const hospitalId = 7;
+        // WebSocket connection to your Flask app
+        const socket = io('http://localhost:5001');
+
+        // Object to store Google Map instances for each alert
+        const maps = {};
+
+        // Get the container for alerts and the no-alerts message
+        const alertsContainer = document.getElementById('alerts-container');
+        const noAlertsMessage = document.getElementById('no-alerts-message');
+
+        // Function to initialize a new Google Map
+        function initMapForAlert(mapElementId, latitude, longitude) {
+            const newLocation = { lat: parseFloat(latitude), lng: parseFloat(longitude) };
+            maps[mapElementId] = new google.maps.Map(document.getElementById(mapElementId), {
+                zoom: 14, // Increased zoom for better detail
+                center: newLocation,
+                disableDefaultUI: true, // Clean up default UI for a cleaner look
+                zoomControl: true, // Allow zooming
+            });
+
+            // Add a marker to the map
+            new google.maps.Marker({
+                position: newLocation,
+                map: maps[mapElementId],
+                title: 'Accident Location',
+                animation: google.maps.Animation.DROP, // Nice drop animation for marker
+            });
+        }
+
+        // Socket.IO listener for incoming accident alerts
+        socket.on('accident-alert', (data) => {
+            // Hide the "No alerts" message if an alert comes in
+            if (noAlertsMessage) {
+                noAlertsMessage.classList.add('hidden');
+            }
+
+            // Check if the alert is relevant for this specific hospital
+            // The `hospital_ids` array from the backend determines who should see this alert.
+            if (data.hospital_ids && !data.hospital_ids.includes(hospitalId)) {
+                console.log(`Alert (ID: ${data.latitude}-${data.longitude}) not relevant for Hospital ID: ${hospitalId}.`);
+                return; // Exit if not relevant
+            }
+
+            console.log(`Received relevant accident alert for Hospital ID: ${hospitalId}`, data);
+
+            // Create a unique ID for the map section within this alert card
+            const mapId = `map-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`; // More robust unique ID
+
+            // Create a new alert card element
+            const alertCard = document.createElement('div');
+            // Apply Tailwind classes for styling: elevated card, rounded, shadow, padding, margin
+            alertCard.className = 'alert-card bg-white rounded-xl shadow-lg p-6 mb-6 overflow-hidden border border-gray-200';
+
+            // Populate the alert card's inner HTML
+            alertCard.innerHTML = `
+                <h2 class="text-2xl font-semibold text-white bg-red-600 py-3 px-4 rounded-t-lg -mx-6 -mt-6 mb-4 text-center">
+                    Accident Alert
+                </h2>
+                <div class="content space-y-2 text-gray-700">
+                    <p><strong>Location:</strong> ${data.address || 'Unknown'}</p>
+                    <p><strong>Latitude:</strong> ${data.latitude}</p>
+                    <p><strong>Longitude:</strong> ${data.longitude}</p>
+                    <p><strong>Intensity:</strong> <span class="${data.intensity === 'critical' ? 'text-red-600 font-bold' : data.intensity === 'high' ? 'text-orange-500 font-semibold' : 'text-green-600'}">${data.intensity.toUpperCase()}</span></p>
+                    <div class="map-section bg-gray-200 rounded-lg overflow-hidden mt-4" id="${mapId}"></div>
+                    <button onclick="prepareForEmergency()" class="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg mt-4 transition duration-300 ease-in-out transform hover:scale-105">
+                        Prepare for Emergency
+                    </button>
+                </div>
+            `;
+
+            // Add the new alert card to the top of the container
+            alertsContainer.prepend(alertCard);
+
+            // Initialize the Google Map for this specific alert card
+            // Use a slight delay to ensure the DOM element is fully rendered
+            setTimeout(() => {
+                initMapForAlert(mapId, data.latitude, data.longitude);
+            }, 100);
+        });
+
+        // Placeholder function for emergency response
+        function prepareForEmergency() {
+            // TODO: Replace this alert with a more user-friendly modal or toast notification
+            alert('Emergency response team notified!');
+        }
+
+        // Optional: Function to initialize map if no alerts are present initially (not strictly needed with dynamic alerts)
+        function initMap() {
+            // This function is called by the Google Maps API script's `callback` parameter.
+            // It's primarily used for static maps or initial map loads.
+            // For dynamic alerts, `initMapForAlert` is called when an alert arrives.
+            // We can leave it empty or use it to display a default map if no alerts.
+            console.log("Google Maps API loaded.");
+        }
+    </script>
+
+</body>
+</html>

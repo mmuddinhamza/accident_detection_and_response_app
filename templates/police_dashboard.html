@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Dashboard - Accident Alert System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #28a745;
+            padding: 10px 20px;
+            color: white;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .section {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .section h2 {
+            color: #28a745;
+        }
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .alert.critical {
+            background-color: #ffcccb;
+            color: red;
+        }
+        .alert.normal {
+            background-color: #e7f7e7;
+            color: green;
+        }
+        .alert-header {
+            font-weight: bold;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .map-section {
+            height: 200px;
+            background-color: #e0e0e0;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            line-height: 200px;
+        }
+        .vehicle-info, .user-info {
+            padding: 15px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .vehicle-info h3, .user-info h3 {
+            color: #28a745;
+        }
+        .suggestions {
+            background-color: #e3f7e3;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 8px;
+            border: 1px solid #28a745;
+        }
+        .suggestions h3 {
+            margin-top: 0;
+            color: #28a745;
+        }
+        .timer {
+            font-size: 18px;
+            font-weight: bold;
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Police Dashboard - Accident Alerts</h1>
+</header>
+
+<div class="container">
+    <!-- Recent Accident Alerts Section -->
+    <div class="section">
+        <h2>Accident Alerts</h2>
+        <div id="alerts-container">
+            <!-- Dynamic accident alerts will appear here -->
+        </div>
+    </div>
+
+    <!-- Map Section -->
+    <div class="section">
+        <h2>Accident Location</h2>
+        <div id="map" style="width:100%; height: 200px;"></div>
+    </div>
+</div>
+
+<!-- Include Google Maps API -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAyb_ybHoPXDc3xrNAIb3R3Qn6SbprRHfY&callback=initMap"></script>
+
+<script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
+<script>
+    let map, marker;
+
+    // Initialize Google Maps
+    function initMap() {
+        const initialLocation = { lat: 40.7128, lng: -74.0060 }; // Example location
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 12,
+            center: initialLocation
+        });
+        marker = new google.maps.Marker({
+            position: initialLocation,
+            map: map,
+            title: 'Accident Location'
+        });
+    }
+
+    // Connect to WebSocket server
+    const socket = io('http://localhost:5001'); // Update to match the new WebSocket server
+
+socket.on('accident-alert', (data) => {
+    const alertsContainer = document.getElementById('alerts-container');
+    const alertElement = document.createElement('div');
+    alertElement.className = `alert ${data.intensity > 5 ? 'critical' : 'normal'}`;
+    alertElement.innerHTML = `
+        <div class="alert-header">Accident Alert</div>
+        <p><strong>Location:</strong> ${data.address || 'Unknown'}</p>
+        <p><strong>Latitude:</strong> ${data.latitude}</p>
+        <p><strong>Longitude:</strong> ${data.longitude}</p>
+        <p><strong>Intensity:</strong> ${data.intensity}</p>
+        <button onclick="prepareForEmergency()">Prepare for Emergency</button>
+    `;
+    alertsContainer.prepend(alertElement);
+
+    const newLocation = { lat: data.latitude, lng: data.longitude };
+    map.setCenter(newLocation);
+    marker.setPosition(newLocation);
+});
+
+
+    // Prepare for emergency (placeholder function)
+    function prepareForEmergency() {
+        alert('Emergency response team notified!');
+    }
+</script>
+
+</body>
+</html>
