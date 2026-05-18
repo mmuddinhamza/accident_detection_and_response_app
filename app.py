@@ -459,7 +459,7 @@ def send_sms_alert(hospital, alert_message):
         # Otherwise, keep the specific WhatsApp 'from_' number.
         whatsapp_response = client.messages.create(
             body=alert_message,
-            from_="whatsapp:+14155238886",  # Your Twilio WhatsApp number (default sandbox number)
+            from_="whatsapp: {your twillio whatsapp no.}",  # Your Twilio WhatsApp number (default sandbox number)
             to=f"whatsapp:{contact_number}"
         )
         logging.info(f"WhatsApp alert sent successfully to {contact_number}: {whatsapp_response.sid}")
